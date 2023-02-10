@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33213.308
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsService2", "WindowsService2\WindowsService2.csproj", "{C6F844D8-9FC6-442E-8956-2BCB9FD75873}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "APIService", "APIService\APIService.vdproj", "{EDD67997-1DEA-4591-B65F-CF0C828E43D6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C6F844D8-9FC6-442E-8956-2BCB9FD75873}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C6F844D8-9FC6-442E-8956-2BCB9FD75873}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C6F844D8-9FC6-442E-8956-2BCB9FD75873}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C6F844D8-9FC6-442E-8956-2BCB9FD75873}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EDD67997-1DEA-4591-B65F-CF0C828E43D6}.Debug|Any CPU.ActiveCfg = Debug
+		{EDD67997-1DEA-4591-B65F-CF0C828E43D6}.Release|Any CPU.ActiveCfg = Release
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {40F0E0FF-B37B-4D34-9848-E9BD2A8CCB5E}
+	EndGlobalSection
+EndGlobal
