@@ -1,15 +1,14 @@
-﻿using Npgsql;
+﻿using Newtonsoft.Json;
+using Npgsql;
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
+using System.IO;
+using System.Net;
+using System.Runtime.Remoting.Metadata.W3cXsd2001;
 using System.ServiceProcess;
 using System.Text;
-using System.Net;
-using System.IO;
-using Newtonsoft.Json;
-using System.Windows.Forms;
-using System.Xml.Linq;
-using System.Collections.Generic;
 
 namespace WindowsService2
 {
@@ -19,22 +18,22 @@ namespace WindowsService2
         private NpgsqlConnection conn;
         private NpgsqlConnection conn2;
         private NpgsqlConnection conn3;
+        private NpgsqlConnection conn4;
+        private NpgsqlConnection conn5;
         private NpgsqlCommand comm;
         private NpgsqlCommand comm2;
-        private NpgsqlCommand comm3;
+
         private NpgsqlCommand comm4;
         private NpgsqlCommand comm5;
+        private NpgsqlCommand comm6;
+        private NpgsqlCommand comm7;
+
         private HttpWebRequest request;
         private static string server;
-        private static string server2 = "localhost";
         private static string prt;
-        private static string port = "5432";
         private static string db;
-        private static string db2 = "JOIN";
         private static string userId;
-        private static string userI = "postgres";
         private static string passwd;
-        private static string passwd2 = "12345678";
         private static string domain;
         private static string tokenn;
         private static string time;
@@ -48,43 +47,23 @@ namespace WindowsService2
         protected override void OnStart(string[] args)
         {
             readAllSettings();
-            string ConnectionString = "server=" + server + ";" + "port=" + prt + ";" + "user id=" + userId + ";" + "password=" + passwd + ";" + "database=" + db + ";";
-            string ConnectionString2 = "server=" + server + ";" + "port=" + prt + ";" + "user id=" + userId + ";" + "password=" + passwd + ";" + "database=" + db2 + ";";
-
-            conn = new NpgsqlConnection(ConnectionString);
-            conn2 = new NpgsqlConnection(ConnectionString2);
-            conn3 = new NpgsqlConnection(ConnectionString);
-
-            string query = "insert into \"result_api\" (\"Company\", \"Result\", \"JsonError\", \"EstructuraError\", \"DetalleError\", \"DocGenerado\", \"secuencial\", \"empresa\") values (@COMPANY, @RESULT, @JSONERROR, @ESTRUCTURAERROR, @DETALLEERROR, @DOCGENERADO, @SECUENCIAL, @EMPRESA) on conflict (id) do nothing";
-            string queryS1 = "select tc.fecha, case when mc.nombre is null or mc.nombre = '' then 'CONSUMIDOR FINAL' else mc.nombre end as cliente, \r\ncase when mc.direccion is null or mc.direccion = '' then 'Dirección' else mc.direccion end as direccion, \r\ncase when mc.telefono is null or mc.telefono = '' then '9999999999' else mc.telefono end as telefono, \r\ncase when mc.cedula is null or mc.cedula = '' then '9999999999999' else mc.cedula end as ruc, cast('01' as varchar(2)) as tipoComprobante, cast('01' as varchar(20)) as tipoIdentificador, \r\ncase when mc.email is null or mc.email = '' then 'correo@correo.com' else mc.email end as correo, substring(cc.prefijo,1,3) as establecimiento, \r\nsubstring(cc.prefijo,5,3) as ptoEmision, cast( '0201074093001' as varchar(20)) as rucEmpresa, to_char (tc.mov,'000000000') as secuencial, 1 as ambiente, \r\ncast('CARMEN RECALDE' as varchar(20))as razonSocial, \r\ncast( 'FARMACIA AJD' as varchar(20)) as nombreComercial, cast('GUALBERTO PEREZ E261 Y ANDRES PEREZ' as varchar(50)) as direccionMatriz, cast('NO' as varchar(2)) as obligadoContabilidad, \r\ncast('' as varchar(1)) as numeroCE, cast('' as varchar(49)) as claveAcceso,\r\n tc.subtotal as importeSinImpuestos, vlr_dscto as descuento, tc.subtotal+tc.vlr_impto as importeTotal, 0.0 as baseIva12, vlr_impto as valorIva12, 0 as baseIva0, \r\n cast('' as varchar(100)) as adicionales, replace(replace(cc.prefijo,'-','') || to_char (tc.mov,'000000000'),' ' ,'') as secuencialunico from tcfactura as tc \r\n left join mclientes as mc on tc.numero = mc.numero inner join ccajas as cc on tc.caja = cc.caja where not exists ( select empresa, secuencial from result_api as ra \r\n where  replace(replace(cc.prefijo,'-','') || to_char (tc.mov,'000000000'),' ' ,'') = ra.secuencial) and tc.fecha >= '2023-02-07'";
-            string queryS2 = "select item as idlinea, unid as cantidad, mp.descripcion , td.refe as coditem, precio as precioUnitario, \r\nvlr_venta as total, cast(12 as numeric) as iva, cast( 0 as numeric) as ice, cast(0 as numeric) as irbpnr, cast(0 as numeric) as codigoIce, \r\ncast(0 as numeric) as codigoPorcentajeIce, cast(0 as numeric) as baseImponibleIce, cast(0 as numeric) as tarifaIce, \r\ncast(0 as numeric) as ValorIce, cast(0 as numeric) as codigoIrbpnr, cast(0 as numeric) as codigoPorcentajeIrbpnr, cast(0 as numeric) as baseImponibleIrbpnr, \r\ncast(0 as numeric) as tarifaIrbpnr, cast(0 as numeric) as valorIrbpnr \r\nfrom tdfactura as td \r\ninner join tcfactura as tc on td.caja = tc.caja and td.mov = tc.mov inner join ccajas as cc on tc.caja = cc.caja left join mproductos as mp on td.refe = mp.refe \r\nwhere replace(cc.prefijo,'-','') || REPLACE(to_char (tc.mov,'000000000'),' ','') = @SEQUENTIAL";
-            string queryS3 = "select sec as idlinea,cast('01' as varchar(2)) as fp, valor as total, cast(0 as varchar(20)) as plazo, cast('DIAS' as varchar(10)) as unidadtiempo \r\nfrom tpfactura as tp inner join tcfactura as tc on tp.caja = tc.caja \r\nand tp.mov = tc.mov inner join ccajas as cc on tc.caja = cc.caja \r\nwhere replace(cc.prefijo,'-','') || REPLACE(to_char (tc.mov,'000000000'),' ','') = @SEQUENTIAL";
-            
-            comm = new NpgsqlCommand(queryS1, conn);
-            comm2 = new NpgsqlCommand(query, conn2);
-            comm3 = new NpgsqlCommand("select * from result_api", conn2);
-            comm4 = new NpgsqlCommand(queryS2, conn3);
-            comm5 = new NpgsqlCommand(queryS3, conn3);
-            comm4.Parameters.Add("@SEQUENTIAL", NpgsqlTypes.NpgsqlDbType.Varchar);
-            comm5.Parameters.Add("@SEQUENTIAL", NpgsqlTypes.NpgsqlDbType.Varchar);
 
             try
             {
-                conn.Open();
-                conn2.Open();
-                conn3.Open();
-                EventLog.WriteEntry("Established Connection!", EventLogEntryType.Information);
+
+                EventLog.WriteEntry("Conexion exitosa a la base de datos", EventLogEntryType.Information);
+
                 timerSc.Start();
             }
             catch (NpgsqlException ex)
             {
                 msg = ex.Message + "\n" + ex.HelpLink + "\n" + ex.Source + "\n" + ex.ErrorCode + "\n" + ex.Data;
-                EventLog.WriteEntry("Connection Error: " + msg, EventLogEntryType.Error);
+                EventLog.WriteEntry("Error al conectar a la BD: " + msg, EventLogEntryType.Error);
             }
             catch (Exception ex)
             {
                 msg = ex.Message + "\n" + ex.Source + "\n" + ex.StackTrace + "\n" + ex.Data;
-                EventLog.WriteEntry("Error ocurrido en el transcurso del servicio: " + msg, EventLogEntryType.Error);
+                EventLog.WriteEntry("Error: " + msg, EventLogEntryType.Error);
             }
 
         }
@@ -99,36 +78,87 @@ namespace WindowsService2
 
         public void connectionNpgsql()
         {
-            NpgsqlConnection.ClearPool(conn);
-            NpgsqlConnection.ClearPool(conn2);
-            NpgsqlConnection.ClearPool(conn3);
-            NpgsqlDataReader rd = comm3.ExecuteReader();
-            if (rd.HasRows)
+            try
             {
-                //EventLog.WriteEntry("comm3 ejecutada retorno: ", EventLogEntryType.Information);
-                formatJson(rd);
+                string ConnectionString = "server=" + server + ";" + "port=" + prt + ";" + "user id=" + userId + ";" + "password=" + passwd + ";" + "database=" + db + ";";
+
+                conn = new NpgsqlConnection(ConnectionString);
+                conn2 = new NpgsqlConnection(ConnectionString);
+                conn3 = new NpgsqlConnection(ConnectionString);
+                conn4 = new NpgsqlConnection(ConnectionString);
+                conn5 = new NpgsqlConnection(ConnectionString);
+
+                //string query = "insert into \"result_api\" (\"Company\", \"Result\", \"JsonError\", \"EstructuraError\", \"DetalleError\", \"DocGenerado\", \"secuencial\", \"empresa\") values (@COMPANY, @RESULT, @JSONERROR, @ESTRUCTURAERROR, @DETALLEERROR, @DOCGENERADO, @SECUENCIAL, @EMPRESA) on conflict (id) do nothing";
+                string queryInsertResult = "INSERT INTO result_api (id, \"Company\", \"Result\", \"JsonError\", \"EstructuraError\", \"DetalleError\", \"DocGenerado\", secuencial, empresa) select  * from (SELECT 0 as id  , cast(@COMPANY as varchar) as Company, @RESULT as Result,@JSONERROR as JsonError,@ESTRUCTURAERROR as EstructuraError, @DETALLEERROR as DetalleError, @DOCGENERADO as DocGenerado,cast(@SECUENCIAL as varchar) as secuencial, @EMPRESA as empresa ) as a where not exists ( select * from result_api as  b where a.secuencial = b.secuencial )";
+                string queryCabeceraFac = "select * from cabecerafactura() as( fecha date,  cliente character,  direccion character,  telefono character,  ruc character, tipocomprobante character varying,  tipoidentificador text,  correo bpchar,  establecimiento text,  ptoemision text, rucempresa character (13),  secuencial text,  ambiente integer,  razonsocial character varying,  nombrecomercial character (60), direccionmatriz character (40),  obligadocontabilidad character varying,  numeroce character varying,  claveacceso character varying, importesinimpuestos numeric (12,2),  descuento numeric (12,2),  importetotal numeric,  baseiva12 numeric,  valoriva12 numeric (12,2), baseiva0 numeric,  adicionales character varying,  secuencialunico text)";
+                string queryDetalleFac = "select * from detallefactura(@SEQUENTIAL) as (idlinea smallint , cantidad numeric, descripcion character(50) , coditem varchar(100), precioUnitario numeric,  total numeric, iva numeric, ice numeric,  irbpnr numeric,  codigoIce numeric, codigoPorcentajeIce numeric,baseImponibleIce numeric, tarifaIce numeric,ValorIce numeric,codigoIrbpnr numeric, codigoPorcentajeIrbpnr numeric, baseImponibleIrbpnr numeric, tarifaIrbpnr numeric,valorIrbpnr numeric)";
+                string queryFpagosFac = "select * from fpfactura(@SEQUENTIAL) as (idlinea smallint, fp varchar(2), total numeric, plazo varchar(20), unidadtiempo varchar(10))";
+
+                string queryCabeceraNC = "select * from cabeceranc() as( fecha date,  cliente character,  direccion character,  telefono character,  ruc character, tipocomprobante character varying,  tipoidentificador text,  correo bpchar,  establecimiento text,  ptoemision text, rucempresa character (13),  secuencial text,  ambiente integer,  razonsocial character varying,  nombrecomercial character (60), direccionmatriz character (40),  obligadocontabilidad character varying, tipoDocAfectado varchar(2), secuencialDocAfectado varchar (15),fechaDocAfectado date,motivoDev varchar(20), numeroce character varying,  claveacceso character varying, importesinimpuestos numeric (12,2),  descuento numeric (12,2),  importetotal numeric,  baseiva12 numeric,  valoriva12 numeric (12,2), baseiva0 numeric,  adicionales character varying,  secuencialunico text)";
+                string queryDetalleNC = "select * from detallenc(@SEQUENTIAL) as (idlinea smallint, cantidad numeric, descripcion character(50) , coditem varchar(100), precioUnitario numeric,  total numeric,iva numeric, ice numeric,  irbpnr numeric,  codigoIce numeric, codigoPorcentajeIce numeric, baseImponibleIce numeric, tarifaIce numeric,ValorIce numeric, codigoIrbpnr numeric, codigoPorcentajeIrbpnr numeric, baseImponibleIrbpnr numeric, tarifaIrbpnr numeric, valorIrbpnr numeric)";
+
+                comm = new NpgsqlCommand(queryCabeceraFac, conn);
+                comm2 = new NpgsqlCommand(queryInsertResult, conn2);
+                //comm3 = new NpgsqlCommand("select * from result_api", conn2);
+                comm4 = new NpgsqlCommand(queryDetalleFac, conn3);
+                comm5 = new NpgsqlCommand(queryFpagosFac, conn3);
+
+                comm6 = new NpgsqlCommand(queryCabeceraNC, conn4);
+                comm7 = new NpgsqlCommand(queryDetalleNC, conn5);
+
+                comm4.Parameters.Add("@SEQUENTIAL", NpgsqlTypes.NpgsqlDbType.Varchar);
+                comm5.Parameters.Add("@SEQUENTIAL", NpgsqlTypes.NpgsqlDbType.Varchar);
+
+                comm7.Parameters.Add("@SEQUENTIAL", NpgsqlTypes.NpgsqlDbType.Varchar);
+
+                conn.Open();
+                conn2.Open();
+                conn3.Open();
+                conn4.Open();
+                conn5.Open();
+
+                /*
+               NpgsqlConnection.ClearPool(conn);
+               NpgsqlConnection.ClearPool(conn2);
+               NpgsqlConnection.ClearPool(conn3);
+                */
+
+                NpgsqlDataReader rdFC = comm.ExecuteReader();
+                formatJson(rdFC, 1);
+                rdFC.Close();
+
+                NpgsqlDataReader rdNC = comm6.ExecuteReader();
+                formatJson(rdNC, 2);
+                rdNC.Close();
+
+                conn.Close();
+                conn2.Close();
+                conn3.Close();
+                conn4.Close();
+                conn5.Close();
+
             }
-            else
+            catch (NpgsqlException ex)
             {
-                formatJson(rd);
+
+                EventLog.WriteEntry("Error en : connectionNpgsql " + ex.Message, EventLogEntryType.Error);
+
             }
-            rd.Close();
+            catch (Exception ex)
+            {
+                EventLog.WriteEntry("Error en : connectionNpgsql " + ex.Message, EventLogEntryType.Error);
+            }
         }
 
-        public void formatJson(NpgsqlDataReader rdr)
+        public void formatJson(NpgsqlDataReader rd, int tipo)
         {
-            NpgsqlDataReader rd = comm.ExecuteReader();
-            if (rd.HasRows)
+
+            if (rd.HasRows && tipo == 1)
             {
                 int aff = 0;
-
                 UserData userData = new UserData();
                 while (rd.Read())
                 {
-                    if (rdr.IsClosed)
-                    {
-                        rdr = comm3.ExecuteReader();
-                    }
 
                     userData.fecha = Convert.ToDateTime(rd["fecha"]);
                     userData.cliente = rd["cliente"].ToString().Trim();
@@ -161,6 +191,7 @@ namespace WindowsService2
 
                     comm4.Parameters["@SEQUENTIAL"].Value = sequential;
                     NpgsqlDataReader rd2 = comm4.ExecuteReader();
+
                     if (rd2.HasRows)
                     {
                         List<UserDetail> list = new List<UserDetail>();
@@ -169,7 +200,7 @@ namespace WindowsService2
                             list.Add(new UserDetail()
                             {
                                 idlinea = Convert.ToInt32(rd2["idlinea"]),
-                                cantidad = Convert.ToInt32(rd2["cantidad"]),
+                                cantidad = float.Parse(rd2["cantidad"].ToString()),
                                 item = rd2["descripcion"].ToString().Trim(),
                                 codItem = Convert.ToInt32(rd2["coditem"]),
                                 precioUnitario = Convert.ToDouble(rd2["preciounitario"]),
@@ -179,7 +210,7 @@ namespace WindowsService2
                                 irbpnr = Convert.ToInt32(rd2["irbpnr"]),
                                 codigoIce = Convert.ToInt32(rd2["codigoice"]),
                                 codigoPorcentajeIce = Convert.ToInt32(rd2["codigoporcentajeice"]),
-                                baseImponibleIce = Convert.ToInt32(rd2["baseimponibleice"]),
+                                baseImponibleIce = Int32.Parse(rd2["baseimponibleice"].ToString()),
                                 tarifaIce = Convert.ToInt32(rd2["tarifaice"]),
                                 ValorIce = Convert.ToInt32(rd2["valorice"]),
                                 codigoIrbpnr = Convert.ToInt32(rd2["codigoirbpnr"]),
@@ -213,108 +244,312 @@ namespace WindowsService2
                     }
                     rd3.Close();
                     string jsonResult = JsonConvert.SerializeObject(userData);
-                    jsonApi(rdr, jsonResult, comm2, aff, sequential);
+
+                    jsonApi(jsonResult, comm2, aff, sequential, tipo);
                 }
+
+                rd.Close();
+
             }
-            rd.Close();
+            else if (rd.HasRows && tipo == 2)
+            {
+                int aff = 0;
+                RootobjectNC userData = new RootobjectNC();
+                while (rd.Read())
+                {
+
+                    userData.fecha = Convert.ToDateTime(rd["fecha"]);
+                    userData.cliente = rd["cliente"].ToString().Trim();
+                    userData.direccion = rd["direccion"].ToString().Trim();
+                    userData.telefono = rd["telefono"].ToString().Trim();
+                    userData.ruc = rd["ruc"].ToString().Trim();
+                    userData.tipoComprobante = Int32.Parse(rd["tipocomprobante"].ToString().Trim());
+                    userData.tipoIdentificador = Int32.Parse(rd["tipoidentificador"].ToString().Trim());
+                    userData.correo = rd["correo"].ToString().Trim();
+                    userData.establecimiento = rd["establecimiento"].ToString().Trim();
+                    userData.ptoEmision = rd["ptoemision"].ToString().Trim();
+                    userData.rucEmpresa = rd["rucempresa"].ToString().Trim();
+                    userData.secuencial = rd["secuencial"].ToString().Trim();
+                    userData.ambiente = rd["ambiente"].ToString().Trim();
+                    userData.razonSocial = rd["razonsocial"].ToString().Trim();
+                    userData.nombreComercial = rd["nombrecomercial"].ToString().Trim();
+                    userData.direccionMatriz = rd["direccionmatriz"].ToString().Trim();
+                    userData.obligadoContabilidad = rd["obligadocontabilidad"].ToString().Trim();
+
+                    userData.tipoDocAfectado = rd["tipodocafectado"].ToString().Trim();
+                    userData.motivoDev = rd["motivodev"].ToString().Trim();
+                    userData.secuencialDocAfectado = rd["secuencialdocafectado"].ToString().Trim();
+                    userData.fechaDocSustento = Convert.ToDateTime(rd["fechadocafectado"]);
+
+                    userData.claveAcceso = rd["claveacceso"].ToString().Trim();
+                    userData.importeSinImpuestos = float.Parse(rd["importesinimpuestos"].ToString().Trim());
+                    userData.descuento = float.Parse(rd["descuento"].ToString());
+                    userData.importeTotal = float.Parse(rd["importetotal"].ToString());
+                    userData.baseIva12 = float.Parse(rd["baseiva12"].ToString());
+                    userData.valorIva12 = float.Parse(rd["valoriva12"].ToString());
+                    userData.baseIva0 = float.Parse(rd["baseiva0"].ToString());
+                    userData.adicionales = rd["adicionales"].ToString().Trim();
+
+                    string sequential = rd["secuencialunico"].ToString().Trim();
+
+                    comm7.Parameters["@SEQUENTIAL"].Value = sequential;
+
+                    NpgsqlDataReader rd2 = comm7.ExecuteReader();
+                    if (rd2.HasRows)
+                    {
+                        List<DetalleNC> list = new List<DetalleNC>();
+                        while (rd2.Read())
+                        {
+                            list.Add(new DetalleNC()
+                            {
+                                idlinea = Convert.ToInt32(rd2["idlinea"]),
+                                cantidad = float.Parse(rd2["cantidad"].ToString()),
+                                item = rd2["descripcion"].ToString().Trim(),
+                                codItem = Convert.ToInt32(rd2["coditem"]),
+                                precioUnitario = float.Parse(rd2["preciounitario"].ToString()),
+                                total = float.Parse(rd2["total"].ToString()),
+                                iva = Convert.ToInt32(rd2["iva"]),
+                                ice = Convert.ToInt32(rd2["ice"]),
+                                irbpnr = Convert.ToInt32(rd2["irbpnr"]),
+                                codigoIce = rd2["codigoice"].ToString(),
+                                codigoPorcentajeIce = rd2["codigoporcentajeice"].ToString(),
+                                baseImponibleIce = Int32.Parse(rd2["baseimponibleice"].ToString()),
+                                tarifaIce = Int32.Parse(rd2["tarifaice"].ToString()),
+                                ValorIce = Int32.Parse(rd2["valorice"].ToString()),
+                                codigoIrbpnr = Convert.ToInt32(rd2["codigoirbpnr"]),
+                                codigoPorcentajeIrbpnr = Convert.ToInt32(rd2["codigoporcentajeirbpnr"]),
+                                baseImponibleIrbpnr = Int32.Parse(rd2["baseimponibleirbpnr"].ToString()),
+                                tarifaIrbpnr = Convert.ToInt32(rd2["tarifairbpnr"]),
+                                valorIrbpnr = Int32.Parse(rd2["valorirbpnr"].ToString())
+                            });
+
+                            userData.Detalle = list;
+                        }
+                    }
+                    rd2.Close();
+
+                    string jsonResult = JsonConvert.SerializeObject(userData);
+                    jsonApi(jsonResult, comm2, aff, sequential, tipo);
+                }
+                rd.Close();
+            }
+            else
+            {
+                EventLog.WriteEntry("formatJson contiene rows: " + rd.HasRows.ToString() + "en tipo de documento  " + tipo, EventLogEntryType.Warning);
+
+            }
+
         }
 
-        public void jsonApi(NpgsqlDataReader rd, string jsonDat, NpgsqlCommand comm2, int aff, string uniqueSequential)
+        public void jsonApi(string jsonDat, NpgsqlCommand comm2, int aff, string uniqueSequential , int tipo)
         {
-            try
+            string endpoint = "";
+            
+
+            if (tipo == 1)
             {
+                endpoint = domain + "/api/create/invoice";
                 var myData = JsonConvert.DeserializeObject<UserData>(jsonDat);
-                string tok = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(tokenn));
-                string dat = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(JsonConvert.SerializeObject(myData)));
-
-                BodyApi body = new BodyApi() { token = tok, data = dat};
-                byte[] fullData = UTF8Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(body));
-
-                request = WebRequest.Create(domain) as HttpWebRequest;
-                request.CookieContainer = new CookieContainer();
-                if (!myData.Equals(null))
+                try
                 {
-                    bool is_in = false;
-                    if (rd.HasRows)
-                    {
-                        while (rd.Read())
-                        {
-                            string subSeq = Convert.ToString(rd["DocGenerado"]);
-                            string uniqueSequential2 = subSeq.Substring(1);
-                            if (uniqueSequential == uniqueSequential2)
-                            {
-                                is_in = true;
-                            }
-                        }
-                    }
-                    rd.Close();
 
-                    if (!is_in)
+                    string tok = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(tokenn));
+                    string dat = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(JsonConvert.SerializeObject(myData)));
+
+                    BodyApi body = new BodyApi() { token = tok, data = dat };
+                    byte[] fullData = UTF8Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(body));
+
+                    request = WebRequest.Create(endpoint) as HttpWebRequest;
+                    request.CookieContainer = new CookieContainer();
+                    if (!myData.Equals(null))
                     {
-                        request = WebRequest.Create(domain) as HttpWebRequest;
-                        request.Timeout = 10 * 1000;
-                        request.Method = "POST";
-                        request.ContentLength = fullData.Length;
-                        request.ContentType = "application/json; charset=utf-8";
-                        Stream postStream = request.GetRequestStream();
-                        postStream.Write(fullData, 0, fullData.Length);
-                        postStream.Close();
-                        HttpWebResponse httpWebResponse = request.GetResponse() as HttpWebResponse;
-                        StreamReader streamReader = new StreamReader(httpWebResponse.GetResponseStream());
-                        string bodyResult = streamReader.ReadToEnd().Trim();
-                        streamReader.Close();
-                        EventLog.WriteEntry("Status Code: " + httpWebResponse.StatusCode, EventLogEntryType.Information);
-                        ResponseApi responseApi = JsonConvert.DeserializeObject<ResponseApi>(bodyResult);
-                        comm2.Parameters.Add("@COMPANY", NpgsqlTypes.NpgsqlDbType.Varchar);
-                        comm2.Parameters["@COMPANY"].Value = responseApi.Company;
-                        comm2.Parameters.Add("@RESULT", NpgsqlTypes.NpgsqlDbType.Boolean);
-                        comm2.Parameters["@RESULT"].Value = responseApi.Result;
-                        comm2.Parameters.Add("@JSONERROR", NpgsqlTypes.NpgsqlDbType.Varchar);
-                        comm2.Parameters["@JSONERROR"].Value = responseApi.JsonError;
-                        EventLog.WriteEntry("JsonError: " + responseApi.JsonError, EventLogEntryType.Error);
-                        if (responseApi.EstructuraError != null)
+                        bool is_in = true;
+                        if (is_in)
                         {
+                            request = WebRequest.Create(endpoint) as HttpWebRequest;
+                            request.Timeout = 10 * 1000;
+                            request.Method = "POST";
+                            request.ContentLength = fullData.Length;
+                            request.ContentType = "application/json; charset=utf-8";
+                            Stream postStream = request.GetRequestStream();
+                            postStream.Write(fullData, 0, fullData.Length);
+                            postStream.Close();
+                            HttpWebResponse httpWebResponse = request.GetResponse() as HttpWebResponse;
+                            StreamReader streamReader = new StreamReader(httpWebResponse.GetResponseStream());
+                            string bodyResult = streamReader.ReadToEnd().Trim();
+                            streamReader.Close();
+
+                            EventLog.WriteEntry("Status Code: " + httpWebResponse.StatusCode, EventLogEntryType.Information);
+
+                            ResponseApi responseApi = JsonConvert.DeserializeObject<ResponseApi>(bodyResult);
+                            EventLog.WriteEntry("Result: " + bodyResult, EventLogEntryType.Information);
+
+                            comm2.Parameters.Add("@COMPANY", NpgsqlTypes.NpgsqlDbType.Varchar);
+                            comm2.Parameters.Add("@RESULT", NpgsqlTypes.NpgsqlDbType.Boolean);
+                            comm2.Parameters.Add("@JSONERROR", NpgsqlTypes.NpgsqlDbType.Varchar);
                             comm2.Parameters.Add("@ESTRUCTURAERROR", NpgsqlTypes.NpgsqlDbType.Varchar);
-                            comm2.Parameters["@ESTRUCTURAERROR"].Value = responseApi.EstructuraError;
-                            EventLog.WriteEntry("EstructuraError: " + responseApi.EstructuraError, EventLogEntryType.Error);
-                        }
-                        else
-                        {
-                            comm2.Parameters.Add("@ESTRUCTURAERROR", NpgsqlTypes.NpgsqlDbType.Varchar);
-                            comm2.Parameters["@ESTRUCTURAERROR"].Value = "Without Error";
-                        }
-                        if (responseApi.DetalleError != null)
-                        {
                             comm2.Parameters.Add("@DETALLEERROR", NpgsqlTypes.NpgsqlDbType.Varchar);
-                            comm2.Parameters["@DETALLEERROR"].Value = responseApi.DetalleError;
-                            EventLog.WriteEntry("DetalleError: " + responseApi.DetalleError, EventLogEntryType.Error);
+                            comm2.Parameters.Add("@DOCGENERADO", NpgsqlTypes.NpgsqlDbType.Varchar);
+                            comm2.Parameters.Add("@SECUENCIAL", NpgsqlTypes.NpgsqlDbType.Varchar);
+                            comm2.Parameters.Add("@EMPRESA", NpgsqlTypes.NpgsqlDbType.Varchar);
+
+                            if (responseApi.Result != true && responseApi.Result != false)
+                            {
+                                comm2.Parameters["@COMPANY"].Value = "N/A";
+                                comm2.Parameters["@RESULT"].Value = false;
+                                comm2.Parameters["@JSONERROR"].Value = "N/A";
+                                comm2.Parameters["@ESTRUCTURAERROR"].Value = "N/A";
+                                comm2.Parameters["@DETALLEERROR"].Value = responseApi.Response;
+                                comm2.Parameters["@DOCGENERADO"].Value = "N/A";
+                                comm2.Parameters["@SECUENCIAL"].Value = uniqueSequential;
+                                comm2.Parameters["@EMPRESA"].Value = "N/A";
+                            }
+                            else
+                            {
+                                comm2.Parameters["@COMPANY"].Value = responseApi.Company;
+                                comm2.Parameters["@RESULT"].Value = responseApi.Result;
+                                comm2.Parameters["@JSONERROR"].Value = responseApi.JsonError;
+
+                                if (responseApi.EstructuraError != null)
+                                {
+                                    comm2.Parameters["@ESTRUCTURAERROR"].Value = responseApi.EstructuraError;
+                                }
+                                else
+                                {
+                                    comm2.Parameters["@ESTRUCTURAERROR"].Value = "Without Error";
+                                }
+                                if (responseApi.DetalleError != null)
+                                {
+                                    comm2.Parameters["@DETALLEERROR"].Value = responseApi.DetalleError;
+                                }
+                                else
+                                {
+                                    comm2.Parameters["@DETALLEERROR"].Value = "All OK";
+                                }
+
+                                comm2.Parameters["@DOCGENERADO"].Value = responseApi.DocGenerado;
+                                comm2.Parameters["@SECUENCIAL"].Value = uniqueSequential;
+                                comm2.Parameters["@EMPRESA"].Value = responseApi.rucEmpresa;
+                            }
+                            aff = aff + comm2.ExecuteNonQuery();
+                            comm2.Parameters.Clear();
                         }
-                        else
-                        {
-                            comm2.Parameters.Add("@DETALLEERROR", NpgsqlTypes.NpgsqlDbType.Varchar);
-                            comm2.Parameters["@DETALLEERROR"].Value = "All OK";
-                        }
-                        comm2.Parameters.Add("@DOCGENERADO", NpgsqlTypes.NpgsqlDbType.Varchar);
-                        comm2.Parameters["@DOCGENERADO"].Value = responseApi.DocGenerado;
-                        comm2.Parameters.Add("@SECUENCIAL", NpgsqlTypes.NpgsqlDbType.Varchar);
-                        comm2.Parameters["@SECUENCIAL"].Value = responseApi.secuencial;
-                        comm2.Parameters.Add("@EMPRESA", NpgsqlTypes.NpgsqlDbType.Varchar);
-                        comm2.Parameters["@EMPRESA"].Value = responseApi.rucEmpresa;
-                        aff = aff + comm2.ExecuteNonQuery();
-                        comm2.Parameters.Clear();
                     }
                 }
+                catch (NpgsqlException ex)
+                {
+                    msg = ex.Message + "\n" + ex.HelpLink + "\n" + ex.Source + "\n" + ex.ErrorCode + "\n" + ex.Data;
+                    EventLog.WriteEntry("Error ocurrido en el transcurso del servicio: " + msg, EventLogEntryType.Error);
+                }
+                catch (Exception ex)
+                {
+                    msg = ex.Message + "\n" + ex.Source + "\n" + ex.StackTrace + "\n" + ex.Data;
+                    EventLog.WriteEntry("Error ocurrido en el transcurso del servicio: " + msg, EventLogEntryType.Error);
+                }
+
             }
-            catch (NpgsqlException ex)
+            else if(tipo == 2)
             {
-                msg = ex.Message + "\n" + ex.HelpLink + "\n" + ex.Source + "\n" + ex.ErrorCode + "\n" + ex.Data;
-                EventLog.WriteEntry("Error ocurrido en el transcurso del servicio: " + msg, EventLogEntryType.Error);
+                endpoint = domain + "/api/create/note";
+                var myData = JsonConvert.DeserializeObject<RootobjectNC>(jsonDat);
+                try
+                {
+
+                    string tok = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(tokenn));
+                    string dat = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(JsonConvert.SerializeObject(myData)));
+
+                    BodyApi body = new BodyApi() { token = tok, data = dat };
+                    byte[] fullData = UTF8Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(body));
+
+                    request = WebRequest.Create(endpoint) as HttpWebRequest;
+                    request.CookieContainer = new CookieContainer();
+                    if (!myData.Equals(null))
+                    {
+                        bool is_in = true;
+                        if (is_in)
+                        {
+                            request = WebRequest.Create(endpoint) as HttpWebRequest;
+                            request.Timeout = 10 * 1000;
+                            request.Method = "POST";
+                            request.ContentLength = fullData.Length;
+                            request.ContentType = "application/json; charset=utf-8";
+                            Stream postStream = request.GetRequestStream();
+                            postStream.Write(fullData, 0, fullData.Length);
+                            postStream.Close();
+                            HttpWebResponse httpWebResponse = request.GetResponse() as HttpWebResponse;
+                            StreamReader streamReader = new StreamReader(httpWebResponse.GetResponseStream());
+                            string bodyResult = streamReader.ReadToEnd().Trim();
+                            streamReader.Close();
+
+                            EventLog.WriteEntry("Status Code: " + httpWebResponse.StatusCode, EventLogEntryType.Information);
+
+                            ResponseApi responseApi = JsonConvert.DeserializeObject<ResponseApi>(bodyResult);
+                            EventLog.WriteEntry("Result: " + bodyResult, EventLogEntryType.Information);
+
+                            comm2.Parameters.Add("@COMPANY", NpgsqlTypes.NpgsqlDbType.Varchar);
+                            comm2.Parameters.Add("@RESULT", NpgsqlTypes.NpgsqlDbType.Boolean);
+                            comm2.Parameters.Add("@JSONERROR", NpgsqlTypes.NpgsqlDbType.Varchar);
+                            comm2.Parameters.Add("@ESTRUCTURAERROR", NpgsqlTypes.NpgsqlDbType.Varchar);
+                            comm2.Parameters.Add("@DETALLEERROR", NpgsqlTypes.NpgsqlDbType.Varchar);
+                            comm2.Parameters.Add("@DOCGENERADO", NpgsqlTypes.NpgsqlDbType.Varchar);
+                            comm2.Parameters.Add("@SECUENCIAL", NpgsqlTypes.NpgsqlDbType.Varchar);
+                            comm2.Parameters.Add("@EMPRESA", NpgsqlTypes.NpgsqlDbType.Varchar);
+
+                            if (responseApi.Result != true && responseApi.Result != false)
+                            {
+                                comm2.Parameters["@COMPANY"].Value = "N/A";
+                                comm2.Parameters["@RESULT"].Value = false;
+                                comm2.Parameters["@JSONERROR"].Value = "N/A";
+                                comm2.Parameters["@ESTRUCTURAERROR"].Value = "N/A";
+                                comm2.Parameters["@DETALLEERROR"].Value = responseApi.Response;
+                                comm2.Parameters["@DOCGENERADO"].Value = "N/A";
+                                comm2.Parameters["@SECUENCIAL"].Value = uniqueSequential;
+                                comm2.Parameters["@EMPRESA"].Value = "N/A";
+                            }
+                            else
+                            {
+                                comm2.Parameters["@COMPANY"].Value = responseApi.Company;
+                                comm2.Parameters["@RESULT"].Value = responseApi.Result;
+                                comm2.Parameters["@JSONERROR"].Value = responseApi.JsonError;
+
+                                if (responseApi.EstructuraError != null)
+                                {
+                                    comm2.Parameters["@ESTRUCTURAERROR"].Value = responseApi.EstructuraError;
+                                }
+                                else
+                                {
+                                    comm2.Parameters["@ESTRUCTURAERROR"].Value = "Without Error";
+                                }
+                                if (responseApi.DetalleError != null)
+                                {
+                                    comm2.Parameters["@DETALLEERROR"].Value = responseApi.DetalleError;
+                                }
+                                else
+                                {
+                                    comm2.Parameters["@DETALLEERROR"].Value = "All OK";
+                                }
+
+                                comm2.Parameters["@DOCGENERADO"].Value = responseApi.DocGenerado;
+                                comm2.Parameters["@SECUENCIAL"].Value = uniqueSequential;
+                                comm2.Parameters["@EMPRESA"].Value = responseApi.rucEmpresa;
+                            }
+                            aff = aff + comm2.ExecuteNonQuery();
+                            comm2.Parameters.Clear();
+                        }
+                    }
+                }
+                catch (NpgsqlException ex)
+                {
+                    msg = ex.Message + "\n" + ex.HelpLink + "\n" + ex.Source + "\n" + ex.ErrorCode + "\n" + ex.Data;
+                    EventLog.WriteEntry("Error ocurrido en el transcurso del servicio: " + msg, EventLogEntryType.Error);
+                }
+                catch (Exception ex)
+                {
+                    msg = ex.Message + "\n" + ex.Source + "\n" + ex.StackTrace + "\n" + ex.Data;
+                    EventLog.WriteEntry("Error ocurrido en el transcurso del servicio: " + msg, EventLogEntryType.Error);
+                }
             }
-            catch (Exception ex)
-            {
-                msg = ex.Message + "\n" + ex.Source + "\n" + ex.StackTrace + "\n" + ex.Data;
-                EventLog.WriteEntry("Error ocurrido en el transcurso del servicio: " + msg, EventLogEntryType.Error);
-            }
+           
         }
 
         private void timerSc_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -323,16 +558,10 @@ namespace WindowsService2
 
             timerSc.Interval = Int32.Parse(time) * 60000;
 
-            try
-            {
-                blBandera= true;
-                EventLog.WriteEntry("Started Service!", EventLogEntryType.Information);
-                connectionNpgsql();
-            }
-            catch (Exception ex)
-            {
-                EventLog.WriteEntry(ex.Message, EventLogEntryType.Error);
-            }
+            blBandera = true;
+            EventLog.WriteEntry("Servicio iniciado", EventLogEntryType.Information);
+            connectionNpgsql();
+
 
             blBandera = false;
         }
@@ -434,7 +663,7 @@ namespace WindowsService2
     public class UserDetail
     {
         public int idlinea { get; set; }
-        public int cantidad { get; set; }
+        public float cantidad { get; set; }
         public string item { get; set; }
         public int codItem { get; set; }
         public double precioUnitario { get; set; }
@@ -465,6 +694,7 @@ namespace WindowsService2
 
     public class ResponseApi
     {
+        public string Response { get; set; }
         public string Company { get; set; }
         public bool Result { get; set; }
         public string JsonError { get; set; }
